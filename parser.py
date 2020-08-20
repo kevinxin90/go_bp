@@ -4,6 +4,7 @@ import os
 from collections import defaultdict
 import re
 
+
 def get_synonyms(data):
     """Format synonyms as dicionary
     exact and related synonyms are the keys, and their values are in lists
@@ -14,10 +15,10 @@ def get_synonyms(data):
         related = []
         broad = []
         for syn in data['synonym']:
-            if 'EXACT' in syn: 
+            if 'EXACT' in syn:
                 match = re.findall(r'\"(.+?)\"', syn)
                 exact = exact + match
-            elif 'RELATED' in syn: 
+            elif 'RELATED' in syn:
                 match = re.findall(r'\"(.+?)\"', syn)
                 related = related + match
             elif 'BROAD' in syn:
@@ -34,15 +35,21 @@ def get_synonyms(data):
     else:
         return {}
 
+
 def load_data(data_folder):
     url = "http://current.geneontology.org/ontology/go-basic.obo"
     graph = obonet.read_obo(url)
     for item in graph.nodes():
-        if item.startswith("GO:") and graph.nodes[item]['namespace'] == "biological_process":
+        if item.startswith("GO:") and graph.nodes[item][
+                'namespace'] == "biological_process":
             rec = graph.nodes[item]
             rec["_id"] = item
+            rec['go'] = item
             if rec.get("is_a"):
-                rec["parents"] = [parent for parent in rec.pop("is_a") if parent.startswith("GO:")]
+                rec["parents"] = [
+                    parent for parent in rec.pop("is_a")
+                    if parent.startswith("GO:")
+                ]
             if rec.get("xref"):
                 xrefs = defaultdict(set)
                 for val in rec.get("xref"):
@@ -50,7 +57,10 @@ def load_data(data_folder):
                         prefix, id = val.split(':', 1)
                         if prefix in ["http", "https"]:
                             continue
-                        if prefix.lower() in ['biocyc', 'kegg_pathway', 'kegg_reaction', 'metacyc', 'reactome']:
+                        if prefix.lower() in [
+                                'biocyc', 'kegg_pathway', 'kegg_reaction',
+                                'metacyc', 'reactome'
+                        ]:
                             xrefs[prefix.lower()].add(id)
                         else:
                             xrefs[prefix.lower()].add(val)
@@ -58,9 +68,18 @@ def load_data(data_folder):
                     xrefs[k] = list(v)
                 rec.pop("xref")
                 rec["xrefs"] = dict(xrefs)
-            rec["children"] = [child for child in graph.predecessors(item) if child.startswith("GO:")]
-            rec["ancestors"] = [ancestor for ancestor in nx.descendants(graph, item) if ancestor.startswith("GO:")]
-            rec["descendants"] = [descendant for descendant in nx.ancestors(graph,item) if descendant.startswith("GO:")]
+            rec["children"] = [
+                child for child in graph.predecessors(item)
+                if child.startswith("GO:")
+            ]
+            rec["ancestors"] = [
+                ancestor for ancestor in nx.descendants(graph, item)
+                if ancestor.startswith("GO:")
+            ]
+            rec["descendants"] = [
+                descendant for descendant in nx.ancestors(graph, item)
+                if descendant.startswith("GO:")
+            ]
             rec["synonym"] = get_synonyms(rec)
             if rec.get("created_by"):
                 rec.pop("created_by")
